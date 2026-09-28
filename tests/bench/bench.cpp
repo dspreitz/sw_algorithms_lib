@@ -23,7 +23,7 @@ int main( void)
   printf( "calibration: %lu ticks for 2e6 instructions -> %.2f instructions per tick\n", (unsigned long)ticks, insn_per_tick);
 
   struct { const char *name; int kind; } cases[] = {
-      { "WMM2025 degree 12, double (PR #156 earth_induction_model)", 0 },
+      { "WMM2025 degree 12, PR #156 (float sum)", 0 },
       { "WMM degree 12, float (template)", 1 },
       { "WMMHR2025 degree 133, double", 2 },
       { "WMMHR2025 degree 133, float", 3 },

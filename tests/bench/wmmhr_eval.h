@@ -24,7 +24,7 @@ dec_inc wmmhr( double latitude, double longitude, double decimal_year, double al
   double p = ( rc + altitude_km) * cl, z = ( rc * ( 1.0 - (double)E2) + altitude_km) * sl;
   double r = sqrt( p * p + z * z);
   double gclat = asin( z / r);
-  T x = (T)sin( gclat), s = (T)cos( gclat);
+  T x = (T)sin( gclat), s = (T)cos( gclat), recip_s = 1 / s;
   T years = (T)( decimal_year - WMMHR_EPOCH);
   T ratio = (T)( 6371.2 / r);
   T cl1 = (T)cos( longitude * 3.14159265358979323846 / 180.0), sl1 = (T)sin( longitude * 3.14159265358979323846 / 180.0);
@@ -43,17 +43,18 @@ dec_inc wmmhr( double latitude, double longitude, double decimal_year, double al
 	  ratio_m2 *= ratio;
 	}
       if( p_mm == 0) break; // underflow near the poles: remaining terms are negligible
-      T p_n1 = 0, p_n = p_mm, ratio_n2 = ratio_m2;
+      T p_n1 = 0, p_n = p_mm, ratio_n2 = ratio_m2, root_n1 = 0;
       for( unsigned n = m; n <= degree; ++n)
 	{
+	  T root_n = tsqrt<T>( (T)( n * n - m * m));
 	  if( n > m)
 	    {
-	      T nxt = ( n == m + 1) ? tsqrt<T>( 2 * (T)m + 1) * x * p_n
-		  : ( ( 2 * (T)n - 1) * x * p_n - tsqrt<T>( (T)( ( n - 1) * ( n - 1) - m * m)) * p_n1) / tsqrt<T>( (T)( n * n - m * m));
+	      T nxt = ( ( 2 * (T)n - 1) * x * p_n - root_n1 * p_n1) / root_n;
 	      p_n1 = p_n; p_n = nxt; ratio_n2 *= ratio;
 	    }
+	  root_n1 = root_n;
 	  if( n == 0) continue;
-	  T dp = ( n * x * p_n - tsqrt<T>( (T)( n * n - m * m)) * p_n1) / s;
+	  T dp = ( n * x * p_n - root_n * p_n1) * recip_s;
 	  unsigned idx = n * ( n + 1) / 2 + m - 1;
 	  T g, h;
 	  if( n <= WMMHR_CORE_DEGREE)
@@ -66,7 +67,7 @@ dec_inc wmmhr( double latitude, double longitude, double decimal_year, double al
 	  down -= ( n + (T)1) * ratio_n2 * ghc * p_n;
 	}
     }
-  east /= s;
+  east *= recip_s;
   T psi = (T)( gclat - latitude * 3.14159265358979323846 / 180.0);
   T ng = north * tcos<T>( psi) - down * tsin<T>( psi);
   T dg = north * tsin<T>( psi) + down * tcos<T>( psi);

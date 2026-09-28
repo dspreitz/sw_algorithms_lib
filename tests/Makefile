@@ -75,7 +75,7 @@ clean:
 bench:
 	mkdir -p $(BUILD)
 	$(TARGET_PREFIX)gcc $(TARGET_FLAGS) -O2 $(CSTD) -c target/startup.c -o $(BUILD)/startup.o
-	$(TARGET_PREFIX)g++ $(TARGET_FLAGS) $(OPT) $(CXXSTD) -Wall $(INCLUDES) -Ibench --specs=rdimon.specs \
+	$(TARGET_PREFIX)g++ $(TARGET_FLAGS) $(OPT) $(CXXSTD) -fno-math-errno -Wall $(INCLUDES) -Ibench --specs=rdimon.specs \
 	  -T target/mps2_an386.ld -Wl,--no-warn-rwx-segments -Wl,-Map=$(BUILD)/bench.map bench/bench.cpp \
 	  $(LIB)/NAV_Algorithms/earth_induction_model.cpp $(BUILD)/startup.o -lm -o $(BUILD)/bench$(OPT).elf
 	$(TARGET_PREFIX)nm -C -S --size-sort $(BUILD)/bench$(OPT).elf | grep -iE "wmm|induction|__aeabi_d|sqrt|atan|sin|cos" | tail -30
