@@ -71,6 +71,7 @@ clean:
 	rm -rf $(BUILD)
 
 # temporary: WMMHR benchmark (instruction counts via QEMU -icount)
+.PHONY: bench
 bench:
 	mkdir -p $(BUILD)
 	$(TARGET_PREFIX)gcc $(TARGET_FLAGS) -O2 $(CSTD) -c target/startup.c -o $(BUILD)/startup.o
