@@ -92,5 +92,5 @@ jobs:
       - name: Compile all library sources for Cortex-M4F
         run: make -C tests target-compile OPT=${{ matrix.opt }}
 
-      - name: Run tests on Cortex-M4F (QEMU)
-        run: make -C tests target OPT=${{ matrix.opt }}
+      - name: WMMHR benchmark
+        run: make -C tests bench OPT=${{ matrix.opt }}
