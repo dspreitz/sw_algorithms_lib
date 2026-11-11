@@ -34,6 +34,77 @@ jobs:
       - name: Build and run tests
         run: make -C tests host
 
+  sil-flight-regression:
+    name: SIL on a recorded flight (before/after)
+    runs-on: ubuntu-24.04
+    env:
+      # SIL and the flight test (larus-breeze/sw_tools#49). The flight logs are
+      # in a private repository for now; reading them needs the secret
+      # FLIGHT_DATA_TOKEN (fine-grained token, contents read-only on that
+      # repository). Without the secret the job is skipped.
+      SW_TOOLS_REPO: dspreitz/sw_tools
+      SW_TOOLS_REF: test/flight-regression
+      FLIGHT_DATA_REPO: dspreitz/larus_flight_data
+      FLIGHT_DATA_TAG: testdata-v1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: after
+          fetch-depth: 0
+
+      - name: Library before the change
+        id: base
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          base=${PR_BASE:-$PUSH_BEFORE}
+          if [ -z "$base" ] || ! git -C after cat-file -e "$base^{commit}" 2>/dev/null; then
+            base=$(git -C after rev-parse HEAD~1)
+          fi
+          echo "Comparing $(git -C after log --oneline -1 "$base") -> $(git -C after log --oneline -1 HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          git -C after worktree add -q ../before "$base"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SW_TOOLS_REPO }}
+          ref: ${{ env.SW_TOOLS_REF }}
+          path: sw_tools
+
+      - name: Install Python packages
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-numpy python3-pandas
+
+      - name: Restore flight logs
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: flight_data
+          key: flight-data-${{ env.FLIGHT_DATA_TAG }}
+
+      - name: Download flight logs
+        id: download
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.FLIGHT_DATA_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "FLIGHT_DATA_TOKEN is not set: the SIL flight test is skipped." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh release download "$FLIGHT_DATA_TAG" -R "$FLIGHT_DATA_REPO" -D flight_data -p '*.lrsx'
+          echo "downloaded=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save flight logs
+        if: steps.download.outputs.downloaded == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: flight_data
+          key: flight-data-${{ env.FLIGHT_DATA_TAG }}
+
+      - name: Compare SIL results before and after the change
+        if: hashFiles('flight_data/*.lrsx') != ''
+        run: after/tests/sil_flight_regression.sh before after sw_tools flight_data
+
   cortex-m4f:
     runs-on: ubuntu-24.04
     strategy:
